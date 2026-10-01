@@ -1,19 +1,19 @@
 # Canvasser Data Capture
 
-Static web app (single `index.html`) for capturing canvasser VIN and bank details, with user/admin logins,
+Static web app (`index.html`) for capturing canvasser VIN and bank details, with User and Admin logins,
 Name/Phone/LGA autofill from an admin-uploaded CSV, and Excel export.
 
-## Hosting on GitHub Pages
-1. Settings > Pages > Source: "Deploy from a branch", branch `main`, folder `/ (root)`.
-2. Open `https://<your-username>.github.io/<repo-name>/`.
+## Shared logins on every device (Google Sheets backend)
+1. Create a new Google Sheet. Extensions > Apps Script. Paste `backend/Code.gs`, save.
+2. Deploy > New deployment > Web app. Execute as: **Me**. Who has access: **Anyone**. Copy the Web app URL (ends in `/exec`).
+3. Put the URL in `config.json` in this repo: `{ "server": "https://script.google.com/macros/s/XXXX/exec" }`
+4. Open the site. The first visit requires creating the admin profile. After that, every device uses the same logins and data.
 
-GitHub Pages runs in **local mode**: logins, the canvasser list and responses are stored in each user's own
-browser. Admin must create the admin account and upload the CSV on each device, then export Excel from each device
-and combine them with "Merge responses from an Excel export".
+All data (users, directory, responses) lives in the Google Sheet you own. Passwords are stored as salted hashes.
+With `config.json` empty the app runs in local mode (data stays in each browser).
 
-## Optional shared backend
-`backend/server.js` (Node 16+, no dependencies) provides shared logins and data. It cannot run on GitHub Pages.
-Host it elsewhere over HTTPS and point the page at it via "Server settings" on the login screen.
+## Alternative backend
+`backend/server.js` (Node 16+) provides the same API for self-hosting over HTTPS.
 
 ## Privacy
-Never commit `data.json`, canvasser CSVs or Excel exports to this repository. Public repos are public.
+Never commit CSVs, Excel exports or `data.json` to this repository. Public repos are public.

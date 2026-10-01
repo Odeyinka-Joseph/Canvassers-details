@@ -296,6 +296,31 @@ function remote(base) {
     mergeSubs: rows => call("POST", "/api/admin/merge", { rows }).then(j => j.merged),
     wipe: () => call("POST", "/api/admin/wipe", {}) };
 }
+/* ---------- GOOGLE SHEETS backend (Apps Script web app) ---------- */
+function gas(base) {
+  const call = async (action, d) => {
+    let r; try { r = await fetch(base, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ action, token: session ? session.token : undefined }, d || {})), redirect: "follow" }); }
+    catch (e) { bad("Cannot reach the server."); }
+    let j = {}; try { j = await r.json(); } catch (e) { bad("Unexpected response from the server."); }
+    if (j.code === 401 && session) logout("Session expired. Please sign in again.");
+    if (j.error) bad(j.error); return j;
+  };
+  return { name: "remote", base,
+    status: () => call("status"),
+    setup: (u, name, p) => call("setup", { username: u, name, password: p }),
+    login: (u, p) => call("login", { username: u, password: p }),
+    listUsers: () => call("listUsers").then(j => j.users),
+    addUser: (u, name, p, role) => call("addUser", { username: u, name, password: p, role }),
+    resetPw: (u, p) => call("resetPw", { username: u, password: p }),
+    delUser: u => call("delUser", { username: u }),
+    lookup: q => call("lookup", { q }).then(j => j.hits),
+    submit: i => call("submit", { input: i }).then(j => j.rec),
+    summary: () => call("summary"),
+    subsAll: () => call("subsAll").then(j => j.rows),
+    saveDir: (rows, replace) => call("saveDir", { rows, replace }),
+    mergeSubs: rows => call("mergeSubs", { rows }).then(j => j.merged),
+    wipe: () => call("wipe") };
+}
 let api = local;
 
 /* ---------- navigation ---------- */
@@ -340,7 +365,7 @@ $("loginBtn").onclick = async () => {
 ["lu", "lp", "lp2"].forEach(i => $(i).addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); }));
 
 /* ---------- server settings ---------- */
-async function probe(b) { try { const c = new AbortController(), t = setTimeout(() => c.abort(), 3000); const r = await fetch(b + "/api/status", { signal: c.signal }); clearTimeout(t); if (!r.ok) return false; const j = await r.json(); return !!(j && j.ok === true); } catch (e) { return false; } }
+async function probe(b) { try { const c = new AbortController(), t = setTimeout(() => c.abort(), 15000); const r = await fetch(/script\.google\.com|googleusercontent\.com/.test(b) ? b + "?action=status" : b + "/api/status", { signal: c.signal }); clearTimeout(t); if (!r.ok) return false; const j = await r.json(); return !!(j && j.ok === true); } catch (e) { return false; } }
 $("srvBtn").onclick = () => $("srvBox").classList.toggle("hide");
 $("srvConnect").onclick = async () => {
   let u = $("srvUrl").value.trim().replace(/\/+$/, ""), m = $("srvMsg"); if (!u) { m.textContent = "Enter the server address."; return; }
@@ -447,10 +472,13 @@ $("wipeBtn").onclick = async () => { if (!confirm("Erase ALL captured responses?
 
 /* ---------- start ---------- */
 (async () => {
-  const saved = LS.get("dc_server", ""); let note = "";
-  if (saved && await probe(saved)) api = remote(saved);
-  else if (!saved && /^https?:$/.test(location.protocol) && await probe("")) api = remote("");
-  else if (saved) note = "The saved server could not be reached, so local mode is active.";
+  let cfg = {}, note = "";
+  try { const r = await fetch("config.json", { cache: "no-store" }); if (r.ok) cfg = await r.json(); } catch (e) {}
+  const locked = !!(cfg && cfg.server), target = locked ? cfg.server : LS.get("dc_server", "");
+  const mk = u => /script\.google\.com|googleusercontent\.com/.test(u) ? gas(u) : remote(u);
+  if (target) { api = mk(target); if (!(await probe(target))) note = "Cannot reach the backend server. Check your internet connection and refresh the page."; }
+  else if (/^https?:$/.test(location.protocol) && await probe("")) api = remote("");
+  if (locked) { $("srvBtn").classList.add("hide"); $("srvBox").classList.add("hide"); }
   if (session && ((session.token === "local") !== (api.name === "local"))) { session = null; try { sessionStorage.removeItem("dc_sess"); } catch (e) {} }
   route(note);
 })();
