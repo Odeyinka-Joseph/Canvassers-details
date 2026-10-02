@@ -56,7 +56,7 @@ function S(n) {
   return s;
 }
 function rowsOf(s) { const n = s.getLastRow() - 1; return n < 1 ? [] : s.getRange(2, 1, n, s.getLastColumn()).getValues(); }
-function clearData(s) { const n = s.getLastRow() - 1; if (n > 0) s.deleteRows(2, n); }
+function clearData(s) { const n = s.getLastRow() - 1; if (n > 0) s.getRange(2, 1, n, s.getLastColumn()).clearContent(); }
 function withLock(fn) { const l = LockService.getScriptLock(); l.waitLock(25000); try { return fn(); } finally { l.releaseLock(); } }
 function secret() { const p = PropertiesService.getScriptProperties(); let s = p.getProperty("SECRET"); if (!s) { s = Utilities.getUuid() + Utilities.getUuid(); p.setProperty("SECRET", s); } return s; }
 function hashPw(p, salt) {
