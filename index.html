@@ -368,7 +368,7 @@ $("loginBtn").onclick = async () => {
 async function probe(b) { try { const c = new AbortController(), t = setTimeout(() => c.abort(), 15000); const r = await fetch(/script\.google\.com|googleusercontent\.com/.test(b) ? b + "?action=status" : b + "/api/status", { signal: c.signal }); clearTimeout(t); if (!r.ok) return false; const j = await r.json(); return !!(j && j.ok === true); } catch (e) { return false; } }
 $("srvBtn").onclick = () => $("srvBox").classList.toggle("hide");
 $("srvConnect").onclick = async () => {
-  let u = $("srvUrl").value.trim().replace(/\/+$/, ""), m = $("srvMsg"); if (!u) { m.textContent = "Enter the server address."; return; }
+  let u = $("srvUrl").value.trim().replace(/^[<\s]+|[>\s]+$/g, "").replace(/\/+$/, ""), m = $("srvMsg"); if (!u) { m.textContent = "Enter the server address."; return; }
   if (!/^https?:\/\//.test(u)) u = "http://" + u; m.textContent = "Testing…";
   if (await probe(u)) { LS.set("dc_server", u); try { sessionStorage.removeItem("dc_sess"); } catch (e) {} location.reload(); } else m.textContent = "Could not reach that server.";
 };
@@ -474,7 +474,8 @@ $("wipeBtn").onclick = async () => { if (!confirm("Erase ALL captured responses?
 (async () => {
   let cfg = {}, note = "";
   try { const r = await fetch("config.json", { cache: "no-store" }); if (r.ok) cfg = await r.json(); } catch (e) {}
-  const locked = !!(cfg && cfg.server), target = locked ? cfg.server : LS.get("dc_server", "");
+  const clean = s => String(s || "").trim().replace(/^[<\s"']+|[>\s"']+$/g, ""), cfgUrl = clean(cfg && cfg.server);
+  const locked = !!cfgUrl, target = locked ? cfgUrl : LS.get("dc_server", "");
   const mk = u => /script\.google\.com|googleusercontent\.com/.test(u) ? gas(u) : remote(u);
   if (target) { api = mk(target); if (!(await probe(target))) note = "Cannot reach the backend server. Check your internet connection and refresh the page."; }
   else if (/^https?:$/.test(location.protocol) && await probe("")) api = remote("");
